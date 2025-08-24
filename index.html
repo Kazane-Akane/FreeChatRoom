@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Chat Room</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --bg-color: #f8f9fa;
+            --chat-bg: #ffffff;
+            --text-color: #333333;
+            --light-text: #6c757d;
+            --border-color: #e9ecef;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 300px;
+            background-color: white;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .connection-panel {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .room-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .room-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .room-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .room-item.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .room-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .room-name {
+            font-weight: bold;
+        }
+
+        .room-meta {
+            font-size: 0.8rem;
+            color: var(--light-text);
+        }
+        
+        /* 新增的删除按钮样式 */
+        .room-delete-btn {
+            margin-left: 8px;
+            color: var(--light-text);
+            background: none;
+            border: none;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .room-item:hover .room-delete-btn {
+            opacity: 1;
+        }
+        
+        .room-item.active .room-meta {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .room-lock {
+            margin-left: 5px;
+            color: var(--light-text);
+            margin-right: 8px; /* 为删除按钮留出空间 */
+            color: var(--light-text);
+        }
+
+        .room-item.active .room-lock {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 聊天区域样式 */
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--chat-bg);
+        }
+
+        .chat-header {
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .message-img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+        
+        .messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            max-width: 70%;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .received {
+            align-self: flex-start;
+            background-color: #e9ecef;
+            border-bottom-left-radius: 5px;
+        }
+
+        .sent {
+            align-self: flex-end;
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .message-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 8px;
+            object-fit: cover;
+        }
+
+        .message-sender {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .message-peer-id {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
+        .message-content {
+            margin-top: 5px;
+        }
+
+        /* 输入区域样式 */
+        .input-area {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            background-color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .tool-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--light-text);
+            margin-right: 10px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .tool-btn:hover {
+            color: var(--primary-color);
+        }
+
+        #message-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            resize: none;
+            font-family: inherit;
+            font-size: 1rem;
+            min-height: 50px;
+            max-height: 150px;
+            outline: none;
+        }
+
+        #message-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .send-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Emoji选择器 */
+        .emoji-picker {
+            position: absolute;
+            bottom: 70px;
+            right: 20px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .emoji-picker.show {
+            display: block;
+        }
+
+        .emoji-item {
+            display: inline-block;
+            font-size: 1.5rem;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .emoji-item:hover {
+            transform: scale(1.2);
+        }
+
+        /* 文件选择器 */
+        #file-input {
+            display: none;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            position: relative; /* 添加相对定位 */
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 96%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .avatar-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .avatar-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+
+        .avatar-option.selected {
+            border-color: var(--primary-color);
+        }
+
+        .submit-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        /* 公共聊天消息样式 */
+        .public {
+            align-self: center;
+            background-color: #f0f0f0;
+            color: #555;
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 10px;
+            margin: 5px 0;
+        }
+
+        .public-message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .public-message-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 5px;
+            object-fit: cover;
+        }
+
+        .public-message-sender {
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .public-message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
+        /* 创建房间按钮 */
+        .create-room-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+
+        /* 房间上下文菜单 */
+        .room-context-menu {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            display: none;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .room-item:hover .room-context-menu {
+            display: block;
+        }
+
+        .room-context-btn {
+            background: none;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+        }
+
+        .room-context-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        .room-context-btn i {
+            margin-right: 5px;
+        }
+
+        /* ID显示模态框 */
+        .id-display-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .id-display-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .id-display-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .id-value {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
+            word-break: break-all;
+        }
+
+        .id-copy-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        
+        /* 模态框关闭按钮 */
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .modal-close-btn:hover,
+        .modal-close-btn:focus {
+            color: var(--primary-color);
+        }
+        
+        /* 用户个人信息区域 */
+        .user-profile {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            background-color: #f0f0f0;
+            margin-top: auto; /* 将此元素推到底部 */
+        }
+
+        .user-profile .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .user-profile .user-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .user-profile .user-name {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .user-profile .user-id {
+            font-size: 0.8rem;
+            color: var(--light-text);
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .user-profile .show-id-btn {
+            background: none;
+            border: none;
+            color: var(--light-text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: color 0.2s;
+        }
+
+        .user-profile .show-id-btn:hover {
+            color: var(--primary-color);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .emoji-picker {
+                bottom: 120px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="modal" id="user-setup-modal">
+        <div class="modal-content">
+	<span class="modal-close-btn" id="close-user-setup-modal">&times;</span>
+            <div class="modal-title">设置您的个人信息</div>
+            <div class="form-group">
+                <label for="username-input">您的名称</label>
+                <input type="text" id="username-input" placeholder="输入您的名称">
+            </div>
+            <div class="form-group">
+                <label for="user-id-input">创建者ID (可选)</label>
+                <input type="text" id="user-id-input" placeholder="留空将自动生成">
+                <small style="color: var(--light-text);">请保存好您的ID，用于管理房间</small>
+            </div>
+            <div class="form-group">
+                <label>选择头像</label>
+                <div class="avatar-options" id="avatar-options">
+                </div>
+            </div>
+            <button class="submit-btn" id="submit-user-info">开始聊天</button>
+        </div>
+    </div>
+
+    <div class="id-display-modal" id="id-display-modal">
+        <div class="id-display-content">
+            <div class="id-display-title">您的创建者ID</div>
+            <p>请保存好这个ID，您将需要它来管理房间(删除、重命名等操作)</p>
+            <div class="id-value" id="id-display-value"></div>
+            <button class="id-copy-btn" id="id-copy-btn">复制ID</button>
+            <button class="submit-btn" id="id-confirm-btn" style="margin-top: 10px;">我已保存</button>
+        </div>
+    </div>
+
+    <div class="modal" id="create-room-modal">
+        <div class="modal-content">
+            <span class="modal-close-btn" id="close-create-modal">&times;</span>
+            <div class="modal-title">创建新聊天室</div>
+            <div class="form-group">
+                <label for="room-name-input">房间名称</label>
+                <input type="text" id="room-name-input" placeholder="输入房间名称">
+            </div>
+            <div class="form-group">
+                <label for="room-password-input">房间密码 (可选)</label>
+                <input type="password" id="room-password-input" placeholder="输入房间密码">
+            </div>
+            <button class="submit-btn" id="submit-create-room">创建房间</button>
+        </div>
+    </div>
+
+    <div class="modal" id="rename-room-modal">
+        <div class="modal-content">
+            <span class="modal-close-btn" id="close-rename-modal">&times;</span>
+            <div class="modal-title">重命名聊天室</div>
+            <div class="form-group">
+                <label for="new-room-name-input">新房间名称</label>
+                <input type="text" id="new-room-name-input" placeholder="输入新房间名称">
+            </div>
+            <div class="form-group">
+                <label for="rename-creator-id">创建者ID</label>
+                <input type="text" id="rename-creator-id" placeholder="输入您的创建者ID">
+            </div>
+            <button class="submit-btn" id="submit-rename-room">确认重命名</button>
+        </div>
+    </div>
+
+<div class="modal" id="password-modal">
+    <div class="modal-content">
+        <span class="modal-close-btn" id="close-password-modal">&times;</span>
+        <div class="modal-title">请输入房间密码</div>
+        <div class="form-group">
+            <input type="password" id="password-input" placeholder="输入房间密码">
+        </div>
+        <button class="submit-btn" id="submit-password">进入房间</button>
+    </div>
+</div>
+
+    <div class="container" id="main-container" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>聊天室列表</span>
+                <span id="online-count">0人在线</span>
+            </div>
+            <div class="connection-panel">
+                <div id="status-text">正在连接...</div>
+            </div>
+            <div class="room-list" id="room-list">
+            </div>
+            <div class="user-profile">
+                <img id="user-avatar" src="" alt="用户头像" class="user-avatar">
+                <div class="user-info">
+                    <span id="user-name" class="user-name"></span>
+                    <span id="user-id" class="user-id"></span>
+                </div>
+                <button id="show-id-btn" class="show-id-btn" title="显示我的ID">
+                    <i class="fas fa-id-card"></i>
+                </button>
+            </div>
+            <button class="create-room-btn" id="create-room-btn">
+                <i class="fas fa-plus"></i> 创建新房间
+            </button>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-header" id="chat-header">
+                <span id="current-room-name">请选择聊天室</span>
+                <span id="room-user-count">0人</span>
+            </div>
+            <div class="messages" id="messages">
+            </div>
+            <div class="input-area">
+                <div class="toolbar">
+                    <button class="tool-btn" id="emoji-btn"><i class="far fa-smile"></i></button>
+                    <button class="tool-btn" id="image-btn"><i class="far fa-image"></i></button>
+                    <button class="tool-btn" id="toggle-sound-btn" title="开关提示音">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+                <div class="input-row">
+                    <textarea id="message-input" placeholder="输入消息..." disabled></textarea>
+                    <button class="send-btn" id="send-btn" disabled><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2848/2848.wav" preload="auto"></audio>
+
+    <div class="emoji-picker" id="emoji-picker">
+    </div>
+
+    <script>
+        // DOM元素
+        const userSetupModal = document.getElementById('user-setup-modal');
+        const idDisplayModal = document.getElementById('id-display-modal');
+        const idDisplayValue = document.getElementById('id-display-value');
+        const idCopyBtn = document.getElementById('id-copy-btn');
+        const idConfirmBtn = document.getElementById('id-confirm-btn');
+        const createRoomModal = document.getElementById('create-room-modal');
+        const renameRoomModal = document.getElementById('rename-room-modal');
+        const passwordModal = document.getElementById('password-modal');
+        const mainContainer = document.getElementById('main-container');
+        const usernameInput = document.getElementById('username-input');
+        const userIdInput = document.getElementById('user-id-input');
+        const avatarOptions = document.getElementById('avatar-options');
+        const submitUserInfoBtn = document.getElementById('submit-user-info');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const closeUserSetupModalBtn = document.getElementById('close-user-setup-modal');
+        const closePasswordModalBtn = document.getElementById('close-password-modal');
+        const roomNameInput = document.getElementById('room-name-input');
+        const roomPasswordInput = document.getElementById('room-password-input');
+        const submitCreateRoomBtn = document.getElementById('submit-create-room');
+        const newRoomNameInput = document.getElementById('new-room-name-input');
+        const renameCreatorIdInput = document.getElementById('rename-creator-id');
+        const submitRenameRoomBtn = document.getElementById('submit-rename-room');
+        const passwordInput = document.getElementById('password-input');
+        const submitPasswordBtn = document.getElementById('submit-password');
+        const chatHeader = document.getElementById('chat-header');
+        const currentRoomName = document.getElementById('current-room-name');
+        const roomUserCount = document.getElementById('room-user-count');
+        const onlineCount = document.getElementById('online-count');
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const emojiBtn = document.getElementById('emoji-btn');
+        const emojiPicker = document.getElementById('emoji-picker');
+        const imageBtn = document.getElementById('image-btn');
+        const fileInput = document.getElementById('file-input');
+        const statusText = document.getElementById('status-text');
+        const roomList = document.getElementById('room-list');
+        // 新增：获取关闭按钮
+        const closeCreateModalBtn = document.getElementById('close-create-modal');
+        const closeRenameModalBtn = document.getElementById('close-rename-modal');
+
+        // 新增：获取个人信息DOM元素
+        const userAvatarElement = document.getElementById('user-avatar');
+        const userNameElement = document.getElementById('user-name');
+        const userIdElement = document.getElementById('user-id');
+        const showIdBtn = document.getElementById('show-id-btn');
+
+        // 新增：声音相关DOM元素
+        const notificationSound = document.getElementById('notification-sound');
+        const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+
+        // 当前用户信息
+        let currentUser = {
+            name: '',
+            avatar: '',
+            id: ''
+        };
+
+        // 当前房间信息
+        let currentRoom = {
+            id: null,
+            name: null,
+            creator: null,
+            isPrivate: false,
+            pendingRoom: null
+        };
+
+        // 正在管理的房间
+        let managingRoom = null;
+
+        // WebSocket连接
+        let wsConnection;
+
+        // 房间列表
+        let rooms = [];
+        
+        // 旧房间列表，用于判断用户进入和离开
+        let oldRooms = [];
+
+        // 常用emoji列表
+        const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
+
+        // 头像选项
+        const avatarUrls = [
+            'https://cdn-icons-png.flaticon.com/512/4333/4333609.png',
+            'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+            'https://cdn-icons-png.flaticon.com/512/6997/6997662.png',
+            'https://cdn-icons-png.flaticon.com/512/921/921071.png',
+            'https://cdn-icons-png.flaticon.com/512/4333/4333607.png',
+            'https://cdn-icons-png.flaticon.com/512/4202/4202839.png',
+            'https://cdn-icons-png.flaticon.com/512/4140/4140037.png',
+            'https://cdn-icons-png.flaticon.com/512/6997/6997669.png',
+            'https://cdn-icons-png.flaticon.com/512/4202/4202843.png',
+            'https://cdn-icons-png.flaticon.com/512/4140/4140047.png',
+            'https://cdn-icons-png.flaticon.com/512/4140/4140038.png',
+            'https://cdn-icons-png.flaticon.com/512/921/921124.png'
+        ];
+
+        // 新增：声音开关状态，默认为开启
+        let isSoundEnabled = true;
+
+        // 生成随机ID
+        function generateId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // 初始化用户设置模态框
+        function initUserSetupModal() {
+            userSetupModal.style.display = 'flex';
+            // 添加头像选项
+            avatarUrls.forEach((url, index) => {
+                const avatarOption = document.createElement('div');
+                avatarOption.className = 'avatar-option';
+                if (index === 0) avatarOption.classList.add('selected');
+                avatarOption.innerHTML = `<img src="${url}" style="width:100%;height:100%;border-radius:50%;">`;
+                avatarOption.addEventListener('click', () => {
+                    document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+                    avatarOption.classList.add('selected');
+                });
+                avatarOptions.appendChild(avatarOption);
+            });
+        }
+
+        // 初始化emoji选择器
+        function initEmojiPicker() {
+            emojiPicker.innerHTML = '';
+            emojis.forEach(emoji => {
+                const emojiElement = document.createElement('span');
+                emojiElement.className = 'emoji-item';
+                emojiElement.textContent = emoji;
+                emojiElement.addEventListener('click', () => {
+                    insertAtCursor(emoji);
+                    emojiPicker.classList.remove('show');
+                });
+                emojiPicker.appendChild(emojiElement);
+            });
+        }
+
+        // 在光标位置插入文本
+        function insertAtCursor(text) {
+            const startPos = messageInput.selectionStart;
+            const endPos = messageInput.selectionEnd;
+            const beforeText = messageInput.value.substring(0, startPos);
+            const afterText = messageInput.value.substring(endPos);
+            messageInput.value = beforeText + text + afterText;
+            messageInput.selectionStart = messageInput.selectionEnd = startPos + text.length;
+            messageInput.focus();
+        }
+
+        // 生成消息元素
+        // 修正：添加 timestamp 参数
+        function createMessageElement(content, isReceived, isImage = false, senderInfo = null, isSystem = false, timestamp) {
+            const messageElement = document.createElement('div');
+            if (isSystem) {
+                messageElement.className = 'public';
+                const headerElement = document.createElement('div');
+                headerElement.className = 'public-message-header';
+                const avatarElement = document.createElement('img');
+                avatarElement.className = 'public-message-avatar';
+                avatarElement.src = senderInfo?.avatar || 'https://cdn-icons-png.flaticon.com/512/681/681494.png';
+                const senderElement = document.createElement('span');
+                senderElement.className = 'public-message-sender';
+                senderElement.textContent = senderInfo?.name || '系统';
+                const timeElement = document.createElement('span');
+                timeElement.className = 'public-message-time';
+                // 修正：调用 formatTime 并传入时间戳
+                timeElement.textContent = formatTime(timestamp);
+                headerElement.appendChild(avatarElement);
+                headerElement.appendChild(senderElement);
+                headerElement.appendChild(timeElement);
+                messageElement.appendChild(headerElement);
+                const contentElement = document.createElement('div');
+                contentElement.textContent = content;
+                messageElement.appendChild(contentElement);
+            } else {
+                const isMyMessage = senderInfo && senderInfo.id === currentUser.id;
+                messageElement.className = `message ${isMyMessage ? 'sent' : 'received'}`;
+                const headerElement = document.createElement('div');
+                headerElement.className = 'message-header';
+                const avatarElement = document.createElement('img');
+                avatarElement.className = 'message-avatar';
+                avatarElement.src = senderInfo?.avatar || 'https://cdn-icons-png.flaticon.com/512/681/681494.png';
+                const senderElement = document.createElement('span');
+                senderElement.className = 'message-sender';
+                senderElement.textContent = senderInfo?.name || '匿名用户';
+                if (senderInfo?.isCreator) {
+                    const creatorBadge = document.createElement('span');
+                    creatorBadge.textContent = '👑';
+                    creatorBadge.style.marginLeft = '3px';
+                    senderElement.appendChild(creatorBadge);
+                }
+                const timeElement = document.createElement('span');
+                timeElement.className = 'message-time';
+                // 修正：调用 formatTime 并传入时间戳
+                timeElement.textContent = formatTime(timestamp);
+                headerElement.appendChild(avatarElement);
+                headerElement.appendChild(senderElement);
+                headerElement.appendChild(timeElement);
+                messageElement.appendChild(headerElement);
+                if (isImage) {
+                    const imgElement = document.createElement('img');
+                    imgElement.className = 'message-img';
+                    imgElement.src = content;
+                    imgElement.alt = "图片消息";
+                    messageElement.appendChild(imgElement);
+                } else {
+                    const contentElement = document.createElement('div');
+                    contentElement.className = 'message-content';
+                    contentElement.textContent = content;
+                    messageElement.appendChild(contentElement);
+                }
+            }
+            return messageElement;
+        }
+
+        // 格式化时间
+        // 修正：添加 timestamp 参数，并使用它来创建 Date 对象
+        function formatTime(timestamp) {
+            const now = timestamp ? new Date(timestamp) : new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0'); // 月份需要加1
+            const day = now.getDate().toString().padStart(2, '0'); // 获取日期
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // 添加消息到聊天界面
+        // 修正：添加 isImage 参数
+        function addMessage(content, isReceived, isImage = false, senderInfo = null, isSystem = false, timestamp) {
+            // 修正：将 isImage 和 timestamp 参数传递给 createMessageElement
+            const messageElement = createMessageElement(content, isReceived, isImage, senderInfo, isSystem, timestamp);
+            messagesContainer.appendChild(messageElement);
+            // 滚动到底部
+            void messagesContainer.offsetHeight;
+            requestAnimationFrame(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
+        
+        // 新增：播放提示音
+        function playNotificationSound() {
+            if (isSoundEnabled) {
+                notificationSound.currentTime = 0; // 重置到开头
+                notificationSound.play().catch(error => console.log("播放声音失败:", error));
+            }
+        }
+
+        // 更新房间列表
+        function updateRoomList() {
+            roomList.innerHTML = '';
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.className = `room-item ${currentRoom.id === room.id ? 'active' : ''}`;
+                roomElement.dataset.roomId = room.id;
+                const roomInfo = document.createElement('div');
+                roomInfo.className = 'room-info';
+                const roomName = document.createElement('div');
+                roomName.className = 'room-name';
+                roomName.textContent = room.name;
+                const roomMeta = document.createElement('div');
+                roomMeta.className = 'room-meta';
+                roomMeta.textContent = `${room.userCount}人 · 创建者: ${room.creatorName || '未知'}`;
+                roomInfo.appendChild(roomName);
+                roomInfo.appendChild(roomMeta);
+                roomElement.appendChild(roomInfo);
+                if (room.isPrivate) {
+                    const lockIcon = document.createElement('i');
+                    lockIcon.className = 'fas fa-lock room-lock';
+                    roomElement.appendChild(lockIcon);
+                }
+                // 添加上下文菜单（仅对创建者显示）
+                if (room.creatorId === currentUser.id) {
+                    const contextMenu = document.createElement('div');
+                    contextMenu.className = 'room-context-menu';
+                    const renameBtn = document.createElement('button');
+                    renameBtn.className = 'room-context-btn';
+                    renameBtn.innerHTML = '<i class="fas fa-edit"></i> 重命名';
+                    renameBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showRenameRoomModal(room);
+                    });
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'room-context-btn';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> 删除';
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteRoom(room.id);
+                    });
+                    contextMenu.appendChild(renameBtn);
+                    contextMenu.appendChild(deleteBtn);
+                    roomElement.appendChild(contextMenu);
+                }
+                roomElement.addEventListener('click', () => {
+                    if (room.id === currentRoom.id) return;
+                    if (room.isPrivate) {
+                        // 显示密码输入框
+                        currentRoom.pendingRoom = room;
+                        passwordModal.style.display = 'flex';
+                        passwordInput.focus();
+                    } else {
+                        joinRoom(room.id);
+                    }
+                });
+                roomList.appendChild(roomElement);
+            });
+        }
+
+        // 显示重命名房间模态框
+        function showRenameRoomModal(room) {
+            managingRoom = room;
+            newRoomNameInput.value = room.name;
+            renameRoomModal.style.display = 'flex';
+            newRoomNameInput.focus();
+        }
+
+        // 重命名房间
+        function renameRoom() {
+            const newName = newRoomNameInput.value.trim();
+            const creatorId = renameCreatorIdInput.value.trim();
+            if (!newName) {
+                alert('请输入新的房间名称');
+                return;
+            }
+            if (!creatorId) {
+                alert('请输入创建者ID');
+                return;
+            }
+            if (creatorId !== currentUser.id) {
+                alert('创建者ID不匹配');
+                return;
+            }
+
+            // 新增：客户端本地校验重名
+            const roomExists = rooms.some(room => room.name === newName && room.id !== managingRoom.id);
+            if (roomExists) {
+                alert(`房间名 '${newName}' 已存在，请使用其他名称。`);
+                return;
+            }
+
+            if (wsConnection && wsConnection.readyState === WebSocket.OPEN && managingRoom) {
+                wsConnection.send(JSON.stringify({
+                    type: 'rename-room',
+                    roomId: managingRoom.id,
+                    newName: newName,
+                    creatorId: creatorId
+                }));
+                renameRoomModal.style.display = 'none';
+                newRoomNameInput.value = '';
+                renameCreatorIdInput.value = '';
+                managingRoom = null;
+            }
+        }
+
+        // 删除房间
+        function deleteRoom(roomId) {
+            if (confirm('确定要删除这个房间吗？所有用户将被移出该房间。')) {
+                if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                    wsConnection.send(JSON.stringify({
+                        type: 'delete-room',
+                        roomId: roomId,
+                        creatorId: currentUser.id
+                    }));
+                }
+            }
+        }
+
+        // 检测Base64图片
+        function isBase64Image(str) {
+            return typeof str === 'string' && str.startsWith('data:image/');
+        }
+
+        // 更新用户个人信息显示
+        function updateUserProfile() {
+            userAvatarElement.src = currentUser.avatar;
+            userNameElement.textContent = currentUser.name;
+            userIdElement.textContent = currentUser.id;
+        }
+
+        // 显示ID给用户
+        function showUserIdToUser(id) {
+            idDisplayValue.textContent = id;
+            idDisplayModal.style.display = 'flex';
+        }
+
+        // 新增：处理系统消息
+        function handleSystemMessage(data) {
+            if (data.action === 'join' || data.action === 'leave') {
+                const message = `${data.userName} ${data.action === 'join' ? '进入了房间。' : '离开了房间。'}`;
+                playNotificationSound();
+                addMessage(message, false, false, {
+                    name: '系统'
+                }, true, Date.now());
+            } else if (data.action === 'room-deleted') {
+                if (currentRoom.id === data.roomId) {
+                    messagesContainer.innerHTML = '';
+                    addMessage(`系统: 房间 "${data.roomName}" 已被删除`, false, false, { name: '系统' }, true, Date.now());
+                    currentRoom.id = null;
+                    currentRoom.name = null;
+                    chatHeader.style.display = 'none';
+                    messageInput.disabled = true;
+                    sendBtn.disabled = true;
+                    currentRoomName.textContent = '请选择聊天室';
+                    roomUserCount.textContent = '0人';
+                }
+            }
+        }
+        
+        // 新增：处理房间列表更新
+        function handleRoomList(data) {
+            const oldRoomMap = new Map(oldRooms.map(room => [room.id, room]));
+            const newRoomMap = new Map(data.rooms.map(room => [room.id, room]));
+
+            // 检查是否有房间被删除
+            oldRooms.forEach(oldRoom => {
+                if (!newRoomMap.has(oldRoom.id)) {
+                    // 如果被删除的房间是当前房间，显示系统消息
+                    if (oldRoom.id === currentRoom.id) {
+                         messagesContainer.innerHTML = '';
+                         addMessage(`系统: 房间 "${currentRoom.name}" 已被删除`, false, false, {name: '系统'}, true, Date.now());
+                         currentRoom.id = null;
+                         currentRoom.name = null;
+                         chatHeader.style.display = 'none';
+                         messageInput.disabled = true;
+                         sendBtn.disabled = true;
+                         currentRoomName.textContent = '请选择聊天室';
+                         roomUserCount.textContent = '0人';
+                    }
+                }
+            });
+
+            // 检查房间用户数变化
+            data.rooms.forEach(newRoom => {
+                const oldRoom = oldRoomMap.get(newRoom.id);
+                if (oldRoom && newRoom.id === currentRoom.id) {
+                    if (newRoom.userCount > oldRoom.userCount) {
+                        // 有人加入
+                        // 服务器会发送单独的 "system-message" 类型消息，此处不再重复处理
+                    } else if (newRoom.userCount < oldRoom.userCount) {
+                        // 有人离开
+                         // 服务器会发送单独的 "system-message" 类型消息，此处不再重复处理
+                    }
+                }
+            });
+            
+            rooms = data.rooms;
+            updateRoomList();
+            oldRooms = data.rooms; // 更新旧列表
+        }
+
+        // 连接到服务器
+        function connectToServer() {
+            // 注意: 必须使用wss协议
+            wsConnection = new WebSocket('wss://114.132.46.142:443');
+
+            wsConnection.onopen = () => {
+                statusText.textContent = '连接成功';
+                // 发送认证消息
+                wsConnection.send(JSON.stringify({
+                    type: 'auth',
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userAvatar: currentUser.avatar
+                }));
+                // 默认加入第一个房间（通常是公共聊天室）
+                if (rooms.length > 0) {
+                    joinRoom(rooms[0].id);
+                }
+            };
+
+            wsConnection.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('收到服务器消息:', data);
+
+                switch (data.type) {
+                    case 'room-list':
+                        handleRoomList(data);
+                        break;
+                    case 'new-message':
+                        const isMyMessage = data.message.senderId === currentUser.id;
+                        // 修正：根据 isImage 属性决定是否显示图片
+                        addMessage(data.message.content, !isMyMessage, data.message.isImage, {
+                            id: data.message.senderId,
+                            name: data.message.senderName,
+                            avatar: data.message.avatar,
+                            isCreator: rooms.find(room => room.id === currentRoom.id)?.creatorId === data.message.senderId
+                        }, false, data.message.timestamp);
+                        // 新增：如果不是自己发的消息，则播放提示音
+                        if (!isMyMessage) {
+                            playNotificationSound();
+                        }
+                        break;
+                    case 'system-message':
+                        handleSystemMessage(data);
+                        break;
+                    case 'join-success':
+                        currentRoom.id = data.roomId;
+                        currentRoom.name = data.roomName;
+                        chatHeader.style.display = 'flex';
+                        currentRoomName.textContent = data.roomName;
+                        messagesContainer.innerHTML = '';
+                        messageInput.disabled = false;
+                        sendBtn.disabled = false;
+                        // 请求历史记录
+                        wsConnection.send(JSON.stringify({
+                            type: 'get-history',
+                            roomId: data.roomId
+                        }));
+                        addMessage(`系统: 您已加入房间 "${data.roomName}"`, false, false, {
+                            name: '系统'
+                        }, true, Date.now());
+                        break;
+                    case 'join-fail':
+                        alert(data.message);
+                        break;
+                    case 'room-user-count':
+                        if (currentRoom.id === data.roomId) {
+                            roomUserCount.textContent = `${data.userCount}人`;
+                        }
+                        break;
+                    case 'online-count':
+                        onlineCount.textContent = `${data.count}人在线`;
+                        break;
+                    case 'history-data':
+                        messagesContainer.innerHTML = ''; // 清空现有消息
+                        data.history.forEach(msg => {
+                            const isMyMessage = msg.senderId === currentUser.id;
+                            // 修正：根据 isImage 属性决定是否显示图片
+                            addMessage(msg.content, !isMyMessage, msg.isImage, {
+                                id: msg.senderId,
+                                name: msg.senderName,
+                                avatar: msg.avatar
+                            }, false, msg.timestamp);
+                        });
+                        break;
+                    // 新增错误处理
+                    case 'error':
+                        alert('操作失败: ' + data.message);
+                        break;
+                }
+            };
+
+            wsConnection.onclose = () => {
+                statusText.textContent = '连接已断开';
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                setTimeout(connectToServer, 3000); // 3秒后尝试重连
+            };
+
+            wsConnection.onerror = (error) => {
+                statusText.textContent = '连接错误';
+                console.error('WebSocket 错误:', error);
+            };
+        }
+
+        // 加入房间
+        function joinRoom(roomId, password = null) {
+            // 清空聊天区域
+            messagesContainer.innerHTML = '';
+            // 发送加入房间消息
+            wsConnection.send(JSON.stringify({
+                type: 'join-room',
+                roomId: roomId,
+                password: password
+            }));
+        }
+
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', () => {
+            initUserSetupModal();
+            initEmojiPicker();
+        });
+
+        submitUserInfoBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            const userId = userIdInput.value.trim();
+            const selectedAvatar = document.querySelector('.avatar-option.selected img').src;
+
+            if (!username) {
+                alert('请输入您的名称');
+                return;
+            }
+
+            currentUser.name = username;
+            currentUser.avatar = selectedAvatar;
+
+            // 如果用户没有输入ID，则生成一个
+            if (!userId) {
+                currentUser.id = generateId();
+                // 显示ID给用户
+                showUserIdToUser(currentUser.id);
+            } else {
+                currentUser.id = userId;
+            }
+
+            userSetupModal.style.display = 'none';
+            mainContainer.style.display = 'flex';
+
+            // 新增：调用函数更新个人信息显示
+            updateUserProfile();
+
+            // 连接到服务器
+            connectToServer();
+
+            // 添加欢迎消息
+            // 修正：添加时间戳
+            addMessage('欢迎来到FreeChatRoom', false, false, {
+                name: '系统',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/681/681494.png'
+            }, true, Date.now());
+            // 修正：添加时间戳
+            addMessage('系统: 请从左侧选择或创建一个聊天室', false, false, {
+                name: '系统',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/681/681494.png'
+            }, true, Date.now());
+            addMessage('系统: 聊天内容的真实性，请理性看待，谨防上当受骗！', false, false, {
+                name: '系统',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/681/681494.png'
+            }, true, Date.now());
+            addMessage('系统: 请文明聊天，切勿语言攻击他人，切勿散播谣言，网络并非非法之地！', false, false, {
+                name: '系统',
+                avatar: 'https://cdn-icons-png.flaticon.com/512/681/681494.png'
+            }, true, Date.now());
+        });
+
+        // 创建房间按钮事件
+        createRoomBtn.addEventListener('click', () => {
+            createRoomModal.style.display = 'flex';
+            roomNameInput.focus();
+        });
+
+        // 提交创建房间事件
+        submitCreateRoomBtn.addEventListener('click', () => {
+            const roomName = roomNameInput.value.trim();
+            const roomPassword = roomPasswordInput.value.trim();
+
+            if (!roomName) {
+                alert('请输入房间名称');
+                return;
+            }
+            // 新增：客户端本地校验重名
+            const roomExists = rooms.some(room => room.name === roomName);
+            if (roomExists) {
+                alert(`房间名 '${roomName}' 已存在，请使用其他名称。`);
+                return;
+            }
+
+            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                wsConnection.send(JSON.stringify({
+                    type: 'create-room',
+                    roomName: roomName,
+                    isPrivate: !!roomPassword,
+                    password: roomPassword
+                }));
+                createRoomModal.style.display = 'none';
+                roomNameInput.value = '';
+                roomPasswordInput.value = '';
+            }
+        });
+
+        // 提交重命名房间事件
+        submitRenameRoomBtn.addEventListener('click', renameRoom);
+
+        // 提交密码事件
+        submitPasswordBtn.addEventListener('click', () => {
+            const password = passwordInput.value.trim();
+            if (currentRoom.pendingRoom) {
+                joinRoom(currentRoom.pendingRoom.id, password);
+                passwordModal.style.display = 'none';
+                passwordInput.value = '';
+                currentRoom.pendingRoom = null;
+            }
+        });
+
+        // 发送消息
+        sendBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                wsConnection.send(JSON.stringify({
+                    type: 'chat-message',
+                    content: message,
+                }));
+                messageInput.value = '';
+            }
+        });
+
+        // 回车发送消息
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendBtn.click();
+            }
+        });
+
+        // emoji按钮
+        emojiBtn.addEventListener('click', () => {
+            emojiPicker.classList.toggle('show');
+        });
+
+        // 图片按钮
+        imageBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件输入改变事件
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Image = e.target.result;
+                    if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                        wsConnection.send(JSON.stringify({
+                            type: 'chat-message',
+                            content: base64Image
+                        }));
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 复制ID按钮
+        idCopyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(idDisplayValue.textContent).then(() => {
+                alert('ID已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        });
+
+        // 确认保存ID按钮
+        idConfirmBtn.addEventListener('click', () => {
+            idDisplayModal.style.display = 'none';
+        });
+
+        // 显示ID按钮
+        showIdBtn.addEventListener('click', () => {
+            showUserIdToUser(currentUser.id);
+        });
+
+        // 模态框关闭按钮
+        closeUserSetupModalBtn.addEventListener('click', () => userSetupModal.style.display = 'none');
+        closeCreateModalBtn.addEventListener('click', () => createRoomModal.style.display = 'none');
+        closeRenameModalBtn.addEventListener('click', () => renameRoomModal.style.display = 'none');
+        closePasswordModalBtn.addEventListener('click', () => passwordModal.style.display = 'none');
+        
+        // 新增：声音开关按钮
+        toggleSoundBtn.addEventListener('click', () => {
+            isSoundEnabled = !isSoundEnabled;
+            const icon = toggleSoundBtn.querySelector('i');
+            if (isSoundEnabled) {
+                icon.className = 'fas fa-volume-up';
+                toggleSoundBtn.title = '关闭提示音';
+            } else {
+                icon.className = 'fas fa-volume-mute';
+                toggleSoundBtn.title = '开启提示音';
+            }
+        });
+    </script>
+</body>
+</html>
