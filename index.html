@@ -1131,7 +1131,7 @@ function formatTime(timestamp) {
         // 连接到服务器
         function connectToServer() {
             // 替换为你的服务器实际IP和端口
-            wsConnection = new WebSocket('wss://114.132.46.142:3000');
+            wsConnection = new WebSocket('wss://114.132.46.142:80');
             
             wsConnection.onopen = () => {
                 console.log('已连接到服务器');
@@ -1649,6 +1649,7 @@ function formatTime(timestamp) {
 </body>
 
 </html>
+
 
 
 
