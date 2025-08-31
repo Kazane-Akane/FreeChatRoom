@@ -1285,7 +1285,7 @@
         // 连接到服务器
         function connectToServer() {
             // 注意: 必须使用wss协议
-           wsConnection = new WebSocket('wss://localhost:3000');
+           wsConnection = new WebSocket('https://freechatroom.kazane.cloudns.club/');
 
             wsConnection.onopen = () => {
                 statusText.textContent = '连接成功';
@@ -1640,3 +1640,4 @@
     </script>
 </body>
 </html>
+
