@@ -31,7 +31,28 @@
             display: flex;
             height: 100%;
         }
+        
+        
+        /* 新增：懒加载图片按钮样式 */
+        .load-image-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 5px;
+            width: fit-content;
+        }
 
+        .load-image-btn:hover {
+            background-color: #5a6268;
+        }
+        
         /* 侧边栏样式 */
         .sidebar {
             width: 300px;
@@ -901,7 +922,8 @@
 
         // 生成消息元素
         // 修正：添加 timestamp 参数
-        function createMessageElement(content, isReceived, isImage = false, senderInfo = null, isSystem = false, timestamp) {
+
+        function createMessageElement(content, isReceived, isImage, senderInfo, isSystem, timestamp, filename) {
             const messageElement = document.createElement('div');
             if (isSystem) {
                 messageElement.className = 'public';
@@ -915,7 +937,6 @@
                 senderElement.textContent = senderInfo?.name || '系统';
                 const timeElement = document.createElement('span');
                 timeElement.className = 'public-message-time';
-                // 修正：调用 formatTime 并传入时间戳
                 timeElement.textContent = formatTime(timestamp);
                 headerElement.appendChild(avatarElement);
                 headerElement.appendChild(senderElement);
@@ -943,17 +964,49 @@
                 }
                 const timeElement = document.createElement('span');
                 timeElement.className = 'message-time';
-                // 修正：调用 formatTime 并传入时间戳
                 timeElement.textContent = formatTime(timestamp);
                 headerElement.appendChild(avatarElement);
                 headerElement.appendChild(senderElement);
                 headerElement.appendChild(timeElement);
                 messageElement.appendChild(headerElement);
+
                 if (isImage) {
+                    // 创建图片元素，初始隐藏
                     const imgElement = document.createElement('img');
                     imgElement.className = 'message-img';
-                    imgElement.src = content;
                     imgElement.alt = "图片消息";
+                    imgElement.style.display = 'none';
+
+                    // 检查是否为懒加载图片（即内容为文件名，而不是Base64数据）
+                    const isLazyLoad = !content.startsWith('data:');
+
+                    if (isLazyLoad) {
+                        // 是懒加载图片，创建加载按钮
+                        const loadBtn = document.createElement('button');
+                        loadBtn.className = 'load-image-btn';
+                        loadBtn.innerHTML = `<i class="fas fa-image"></i>&nbsp;加载图片`;
+                        loadBtn.dataset.filename = content; // content即为文件名
+                        
+                        loadBtn.addEventListener('click', () => {
+                            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                                wsConnection.send(JSON.stringify({
+                                    type: 'load-image',
+                                    roomId: currentRoom.id,
+                                    filename: loadBtn.dataset.filename,
+                                    userId: currentUser.id
+                                }));
+                            }
+                        });
+                        messageElement.appendChild(loadBtn);
+
+                        // 将文件名作为唯一标识符保存在图片元素上
+                        imgElement.dataset.filename = content;
+                        
+                    } else {
+                        // 不是懒加载图片（即内容为Base64数据），直接显示
+                        imgElement.src = content;
+                        imgElement.style.display = 'block'; // 立即显示图片
+                    }
                     messageElement.appendChild(imgElement);
                 } else {
                     const contentElement = document.createElement('div');
@@ -964,7 +1017,6 @@
             }
             return messageElement;
         }
-
         // 格式化时间
         // 修正：添加 timestamp 参数，并使用它来创建 Date 对象
         function formatTime(timestamp) {
@@ -980,9 +1032,9 @@
 
         // 添加消息到聊天界面
         // 修正：添加 isImage 参数
-        function addMessage(content, isReceived, isImage = false, senderInfo = null, isSystem = false, timestamp) {
+        function addMessage(content, isReceived, isImage, senderInfo, isSystem = false, timestamp, filename = null) {
             // 修正：将 isImage 和 timestamp 参数传递给 createMessageElement
-            const messageElement = createMessageElement(content, isReceived, isImage, senderInfo, isSystem, timestamp);
+            const messageElement = createMessageElement(content, isReceived, isImage, senderInfo, isSystem, timestamp, filename);
             messagesContainer.appendChild(messageElement);
             // 滚动到底部
             void messagesContainer.offsetHeight;
@@ -1139,7 +1191,8 @@
         // 新增：处理系统消息
         function handleSystemMessage(data) {
             if (data.action === 'join' || data.action === 'leave') {
-                const message = `${data.userName} ${data.action === 'join' ? '进入了房间。' : '离开了房间。'}`;
+            const userIdToDisplay = data.userId ? data.userId.substring(0, 8) : '';
+                const message = `${data.userName} (${userIdToDisplay})${data.action === 'join' ? '进入了房间。' : '离开了房间。'}`;
                 playNotificationSound();
                 addMessage(message, false, false, {
                     name: '系统'
@@ -1200,11 +1253,39 @@
             updateRoomList();
             oldRooms = data.rooms; // 更新旧列表
         }
-
+        
+        // 新增：显示消息的函数
+        function displayMessage(message, isHistory = false) {
+            const messageElement = createMessageElement(
+                message.content,
+                message.isReceived,
+                message.isImage,
+                {
+                    id: message.senderId,
+                    name: message.senderName,
+                    avatar: message.avatar,
+                    isCreator: message.isCreator
+                },
+                message.isSystem,
+                message.timestamp,
+                message.isLazyLoad, // 懒加载标志
+                message.isImage ? message.content : null // 传递文件名
+            );
+            messagesContainer.appendChild(messageElement);
+            
+            // 如果不是历史消息，则滚动到最新消息
+            if (!isHistory) {
+                            void messagesContainer.offsetHeight;
+            requestAnimationFrame(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+            }
+        }
+        
         // 连接到服务器
         function connectToServer() {
             // 注意: 必须使用wss协议
-            wsConnection = new WebSocket('https://freechatroom.kazane.cloudns.club/');
+           wsConnection = new WebSocket('wss://localhost:3000');
 
             wsConnection.onopen = () => {
                 statusText.textContent = '连接成功';
@@ -1231,14 +1312,26 @@
                         break;
                     case 'new-message':
                         const isMyMessage = data.message.senderId === currentUser.id;
-                        // 修正：根据 isImage 属性决定是否显示图片
-                        addMessage(data.message.content, !isMyMessage, data.message.isImage, {
-                            id: data.message.senderId,
-                            name: data.message.senderName,
-                            avatar: data.message.avatar,
-                            isCreator: rooms.find(room => room.id === currentRoom.id)?.creatorId === data.message.senderId
-                        }, false, data.message.timestamp);
-                        // 新增：如果不是自己发的消息，则播放提示音
+                        // 【关键修复】如果是自己发送的图片消息，则忽略服务器的广播
+                        if (isMyMessage && data.message.isImage) {
+                            break;
+                        }
+                        // 【修复代码】如果是懒加载图片消息，我们传递 isLazyLoad 和文件名
+                        if (!isMyMessage && data.message.isImage) {
+                            addMessage(data.message.content, !isMyMessage, true, {
+                                id: data.message.senderId,
+                                name: data.message.senderName,
+                                avatar: data.message.avatar
+                            }, false, data.message.timestamp, data.message.content); // 传递文件名
+                        } else {
+                            addMessage(data.message.content, !isMyMessage, data.message.isImage, {
+                                id: data.message.senderId,
+                                name: data.message.senderName,
+                                avatar: data.message.avatar,
+                                isCreator: rooms.find(room => room.id === currentRoom.id)?.creatorId === data.message.senderId
+                            }, false, data.message.timestamp);
+                        }
+                        
                         if (!isMyMessage) {
                             playNotificationSound();
                         }
@@ -1274,18 +1367,37 @@
                     case 'online-count':
                         onlineCount.textContent = `${data.count}人在线`;
                         break;
-                    case 'history-data':
-                        messagesContainer.innerHTML = ''; // 清空现有消息
-                        data.history.forEach(msg => {
-                            const isMyMessage = msg.senderId === currentUser.id;
-                            // 修正：根据 isImage 属性决定是否显示图片
-                            addMessage(msg.content, !isMyMessage, msg.isImage, {
-                                id: msg.senderId,
-                                name: msg.senderName,
-                                avatar: msg.avatar
-                            }, false, msg.timestamp);
-                        });
+                        
+                    case 'history':
+                        // 清空聊天界面
+                        messagesContainer.innerHTML = '';
+                        if (data.messages && Array.isArray(data.messages)) {
+                            // 遍历并显示所有历史消息
+                            data.messages.forEach(msg => {
+                                // 传递 isHistory = true，以便不触发 displayMessage 中的自动滚动
+                                displayMessage(msg, true);
+                            });
+                            // 在所有历史消息加载完毕后，统一滚动到底部
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        }
                         break;
+                                             
+                    case 'image-data':
+                        const filename = data.filename;
+                        const base64Image = data.base64;
+                        const messageImg = document.querySelector(`.message-img[data-filename="${filename}"]`);
+                        const loadBtn = document.querySelector(`.load-image-btn[data-filename="${filename}"]`);
+                        
+                        if (messageImg) {
+                            // 【修复代码】找到图片元素，设置 src 并显示
+                            messageImg.src = base64Image;
+                            messageImg.style.display = 'block';
+                            if (loadBtn) {
+                                loadBtn.remove(); // 找到按钮并移除
+                            }
+                        }
+                        break;
+                                             
                     // 新增错误处理
                     case 'error':
                         alert('操作失败: ' + data.message);
@@ -1476,6 +1588,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const base64Image = e.target.result;
+                    addMessage(base64Image, true, true, currentUser, false, Date.now());
                     if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
                         wsConnection.send(JSON.stringify({
                             type: 'chat-message',
