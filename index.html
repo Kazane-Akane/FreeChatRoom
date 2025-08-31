@@ -1204,7 +1204,8 @@
         // 连接到服务器
         function connectToServer() {
             // 注意: 必须使用wss协议
-			wsConnection = new WebSocket('https://freechatroom.kazane.cloudns.club/');
+            wsConnection = new WebSocket('https://freechatroom.kazane.cloudns.club/');
+
             wsConnection.onopen = () => {
                 statusText.textContent = '连接成功';
                 // 发送认证消息
@@ -1445,23 +1446,23 @@
         });
 
         // emoji按钮
-			emojiBtn.addEventListener('click', (e) => {
-			    e.stopPropagation(); // 阻止事件冒泡，防止全局点击事件立即关闭表情框
-			    emojiPicker.classList.toggle('show'); // 切换表情框的显示状态
-			});
-			
-			// 新增：当点击表情框内部时，阻止事件冒泡
-			emojiPicker.addEventListener('click', (e) => {
-			    e.stopPropagation();
-			});
-			
-			// 新增：全局点击事件监听器，用于点击表情框外部时关闭它
-			document.addEventListener('click', (e) => {
-			    // 检查点击事件的目标是否是表情按钮或表情框本身
-			    if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
-			        emojiPicker.classList.remove('show');
-			    }
-			});
+          emojiBtn.addEventListener('click', (e) => {
+              e.stopPropagation(); // 阻止事件冒泡，防止全局点击事件立即关闭表情框
+              emojiPicker.classList.toggle('show'); // 切换表情框的显示状态
+          });
+
+          // 新增：当点击表情框内部时，阻止事件冒泡
+          emojiPicker.addEventListener('click', (e) => {
+              e.stopPropagation();
+          });
+
+          // 新增：全局点击事件监听器，用于点击表情框外部时关闭它
+          document.addEventListener('click', (e) => {
+              // 检查点击事件的目标是否是表情按钮或表情框本身
+              if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+                  emojiPicker.classList.remove('show');
+              }
+          });
 
         // 图片按钮
         imageBtn.addEventListener('click', () => {
@@ -1525,8 +1526,4 @@
         });
     </script>
 </body>
-
 </html>
-
-
-
